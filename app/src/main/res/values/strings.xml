@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">FireBaseMiniProject</string>
+    <string name="title_activity_home__page__navigation">Home Page</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Rahul</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="food_name">Food Name</string>
+    <string name="food_desc">Food Description</string>
+    <string name="_1_000">1,000</string>
+    <string name="todo">TODO</string>
+</resources>
