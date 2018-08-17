@@ -124,7 +124,7 @@ public class LoginActivity extends AppCompatActivity {
                 progressDialog.setMessage("Please Waiting");
                 progressDialog.show();
 
-                databaseReference.addValueEventListener(new ValueEventListener() {
+                databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
                         //Check if user not exits in database
@@ -140,6 +140,7 @@ public class LoginActivity extends AppCompatActivity {
                                 Intent i = new Intent(LoginActivity.this, Home_Page_Navigation.class);
                                 Common.currentuser = loginModel;
                                 startActivity(i);
+                                databaseReference.removeEventListener(this);
                             } else {
                                 Toast.makeText(LoginActivity.this, "Wrong Password", Toast.LENGTH_SHORT).show();
                             }

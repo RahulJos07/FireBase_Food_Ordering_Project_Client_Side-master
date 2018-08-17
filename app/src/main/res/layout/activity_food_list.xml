@@ -19,11 +19,15 @@
         android:layout_height="match_parent"
         android:background="@drawable/bg"
         android:alpha="0.6"/>
-
+    <android.support.v4.widget.SwipeRefreshLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/swipe_layout_food">
     <android.support.v7.widget.RecyclerView
         android:id="@+id/food_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none"
         android:padding="@dimen/activity_horizontal_margin"/>
+    </android.support.v4.widget.SwipeRefreshLayout>
 </RelativeLayout>

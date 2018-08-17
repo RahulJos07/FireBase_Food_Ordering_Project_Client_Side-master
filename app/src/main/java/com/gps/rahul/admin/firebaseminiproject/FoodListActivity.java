@@ -3,18 +3,22 @@ package com.gps.rahul.admin.firebaseminiproject;
 import android.app.DownloadManager;
 import android.content.Intent;
 import android.support.annotation.NonNull;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.Toast;
 
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
+import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -25,9 +29,11 @@ import com.gps.rahul.admin.firebaseminiproject.Adapter.Grid_Food_Page_Adapter;
 import com.gps.rahul.admin.firebaseminiproject.Common.Common;
 import com.gps.rahul.admin.firebaseminiproject.Database.Database;
 import com.gps.rahul.admin.firebaseminiproject.Interface.ItemClickListener;
+import com.gps.rahul.admin.firebaseminiproject.Model.CategoryModel;
 import com.gps.rahul.admin.firebaseminiproject.Model.FoodModel;
 import com.gps.rahul.admin.firebaseminiproject.ViewHolder.FoodViewHolder;
 import com.gps.rahul.admin.firebaseminiproject.ViewHolder.ItemOffsetDecoration;
+import com.gps.rahul.admin.firebaseminiproject.ViewHolder.MenuViewHolder;
 import com.mancj.materialsearchbar.MaterialSearchBar;
 import com.squareup.picasso.Picasso;
 
@@ -47,12 +53,67 @@ public class FoodListActivity extends AppCompatActivity {
 
     //Favorites
     Database localDB;
+
+    SwipeRefreshLayout swipe_layout_food;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_food_list);
         getSupportActionBar().hide();
         databaseReference= FirebaseDatabase.getInstance().getReference("Food");
+
+
+        swipe_layout_food=(SwipeRefreshLayout)findViewById(R.id.swipe_layout_food);
+        swipe_layout_food.setColorSchemeResources(R.color.colorPrimary,
+                android.R.color.holo_green_dark,
+                android.R.color.holo_orange_dark,
+                android.R.color.holo_blue_dark);
+
+        swipe_layout_food.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                //GetIntent
+                if(getIntent()!=null)
+                {
+                    CategoryId=getIntent().getStringExtra("CategoryId");
+                }
+                if(!CategoryId.isEmpty() && CategoryId!=null)
+                {
+                    if(Common.isConnectToInternet(getBaseContext())) {
+                        loadFood(CategoryId);
+                    }
+                    else
+                    {
+                        Toast.makeText(getBaseContext(), "Please check your connection !!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+            }
+        });
+
+        //Default , load for first time
+        swipe_layout_food.post(new Runnable() {
+            @Override
+            public void run() {
+                //GetIntent
+                if(getIntent()!=null)
+                {
+                    CategoryId=getIntent().getStringExtra("CategoryId");
+                }
+                if(!CategoryId.isEmpty() && CategoryId!=null)
+                {
+                    if(Common.isConnectToInternet(getBaseContext())) {
+                        loadFood(CategoryId);
+                    }
+                    else
+                    {
+                        Toast.makeText(getBaseContext(), "Please check your connection !!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+            }
+        });
+
 
         //Local DB
         localDB=new Database(this);
@@ -61,23 +122,6 @@ public class FoodListActivity extends AppCompatActivity {
         food_recycler_view.setLayoutManager(new GridLayoutManager(FoodListActivity.this, 2));
         ItemOffsetDecoration itemDecoration = new ItemOffsetDecoration(FoodListActivity.this, R.dimen.activity_horizontal_margin);
         food_recycler_view.addItemDecoration(itemDecoration);
-
-        //GetIntent
-        if(getIntent()!=null)
-        {
-            CategoryId=getIntent().getStringExtra("CategoryId");
-        }
-        if(!CategoryId.isEmpty() && CategoryId!=null)
-        {
-            if(Common.isConnectToInternet(getBaseContext())) {
-                loadFood(CategoryId);
-            }
-            else
-            {
-                Toast.makeText(this, "Please check your connection !!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        }
 
         /*//Search
         materialSearchBar=(MaterialSearchBar)findViewById(R.id.searchBar);
@@ -133,13 +177,14 @@ public class FoodListActivity extends AppCompatActivity {
         });*/
     }
 
-    private void startSearch(CharSequence text) {
+    /*private void startSearch(CharSequence text) {
+
         searchadapter=new FirebaseRecyclerAdapter<FoodModel, FoodViewHolder>(
                 FoodModel.class,
                 R.layout.food_item,
                 FoodViewHolder.class,
                 databaseReference.orderByChild("Name").equalTo(text.toString())) //Compare Name
-        {
+            {
             @Override
             protected void populateViewHolder(FoodViewHolder viewHolder, FoodModel model, int position) {
                 viewHolder.food_name.setText(model.getName());
@@ -157,7 +202,7 @@ public class FoodListActivity extends AppCompatActivity {
             }
         };
         food_recycler_view.setAdapter(searchadapter);
-    }
+    }*/
 
     private void loadSuggest() {
         databaseReference.orderByChild("menuId").equalTo(CategoryId).addValueEventListener(new ValueEventListener() {
@@ -177,13 +222,14 @@ public class FoodListActivity extends AppCompatActivity {
     }
 
     private void loadFood(String categoryId) {
-        adapter=new FirebaseRecyclerAdapter<FoodModel, FoodViewHolder>(FoodModel.class,
-                R.layout.food_item,
-                FoodViewHolder.class,
-                databaseReference.orderByChild("menuId").equalTo(categoryId) // like : Select * from Foods where MenuId =
-            ) {
+        Query matchId=databaseReference.orderByChild("menuId").equalTo(categoryId);
+        FirebaseRecyclerOptions<FoodModel> options=new FirebaseRecyclerOptions.Builder<FoodModel>()
+                .setQuery(matchId,FoodModel.class)
+                .build();
+
+        adapter=new FirebaseRecyclerAdapter<FoodModel, FoodViewHolder>(options) {
             @Override
-            protected void populateViewHolder(final FoodViewHolder viewHolder, final FoodModel model, final int position) {
+            protected void onBindViewHolder(@NonNull final FoodViewHolder viewHolder, final int position, @NonNull final FoodModel model) {
                 viewHolder.food_name.setText(model.getName());
                 Picasso.with(getBaseContext()).load(model.getImage()).into(viewHolder.food_image);
 
@@ -221,7 +267,21 @@ public class FoodListActivity extends AppCompatActivity {
                     }
                 });
             }
+            @Override
+            public FoodViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                View itemView= LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.food_item,parent,false);
+                return new FoodViewHolder(itemView);
+            }
         };
+        adapter.startListening();
         food_recycler_view.setAdapter(adapter);
+        swipe_layout_food.setRefreshing(false);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        adapter.stopListening();
     }
 }

@@ -3,10 +3,13 @@ package com.gps.rahul.admin.firebaseminiproject;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -16,13 +19,20 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
+import com.firebase.ui.database.FirebaseRecyclerOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.gps.rahul.admin.firebaseminiproject.Common.Common;
+import com.gps.rahul.admin.firebaseminiproject.Database.Database;
 import com.gps.rahul.admin.firebaseminiproject.Interface.ItemClickListener;
 import com.gps.rahul.admin.firebaseminiproject.Model.CategoryModel;
 import com.gps.rahul.admin.firebaseminiproject.Service.ListenOrder;
@@ -30,8 +40,13 @@ import com.gps.rahul.admin.firebaseminiproject.ViewHolder.ItemOffsetDecoration;
 import com.gps.rahul.admin.firebaseminiproject.ViewHolder.MenuViewHolder;
 import com.squareup.picasso.Picasso;
 
+import java.io.OptionalDataException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import dmax.dialog.SpotsDialog;
 
 public class Home_Page_Navigation extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -41,6 +56,8 @@ public class Home_Page_Navigation extends AppCompatActivity
     DatabaseReference databaseReference;
     private List<CategoryModel> categoryModels;
     FirebaseRecyclerAdapter<CategoryModel,MenuViewHolder> adapter;
+
+    SwipeRefreshLayout swipeRefreshLayout;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,6 +65,41 @@ public class Home_Page_Navigation extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.setTitle("Menu Management");
         setSupportActionBar(toolbar);
+
+        swipeRefreshLayout=(SwipeRefreshLayout)findViewById(R.id.swipe_layout);
+        swipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary,
+                android.R.color.holo_green_dark,
+                android.R.color.holo_orange_dark,
+                android.R.color.holo_blue_dark);
+
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                if(Common.isConnectToInternet(getBaseContext())) {
+                    loadMenu();
+                }
+                else
+                {
+                    Toast.makeText(getBaseContext(), "Please check your connection !!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        });
+
+        //Default , load for first time
+        swipeRefreshLayout.post(new Runnable() {
+            @Override
+            public void run() {
+                if(Common.isConnectToInternet(getBaseContext())) {
+                    loadMenu();
+                }
+                else
+                {
+                    Toast.makeText(getBaseContext(), "Please check your connection !!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        });
 
 
         //Init Firebase
@@ -89,27 +141,30 @@ public class Home_Page_Navigation extends AppCompatActivity
         //home_page_recycler_view.setLayoutManager(new GridLayoutManager(this, 2));
         categoryModels=new ArrayList<>();
 
-        if(Common.isConnectToInternet(this)) {
-            loadMenu();
-        }
-        else
-        {
-            Toast.makeText(this, "Please check your connection !!", Toast.LENGTH_SHORT).show();
-            return;
-        }
         //Register Service
         Intent service=new Intent(Home_Page_Navigation.this,ListenOrder.class);
         startService(service);
 
     }
     private void loadMenu() {
-        adapter=new FirebaseRecyclerAdapter<CategoryModel, MenuViewHolder>(CategoryModel.class,R.layout.menu_item,MenuViewHolder.class,databaseReference) {
+        FirebaseRecyclerOptions<CategoryModel> options=new FirebaseRecyclerOptions.Builder<CategoryModel>()
+                .setQuery(databaseReference,CategoryModel.class)
+                .build();
+
+        adapter=new FirebaseRecyclerAdapter<CategoryModel, MenuViewHolder>(options) {
+
             @Override
-            protected void populateViewHolder(MenuViewHolder viewHolder, CategoryModel model, int position) {
-                viewHolder.menu_name.setText(model.getName());
-                Picasso.with(getBaseContext()).load(model.getImage()).into(viewHolder.menu_image);
+            public MenuViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                View itemView=LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.menu_item,parent,false);
+                return new MenuViewHolder(itemView);
+            }
+            @Override
+            protected void onBindViewHolder(@NonNull MenuViewHolder holder, int position, @NonNull CategoryModel model) {
+                holder.menu_name.setText(model.getName());
+                Picasso.with(getBaseContext()).load(model.getImage()).into(holder.menu_image);
                 final CategoryModel categoryModel=model;
-                viewHolder.setItemClickListener(new ItemClickListener() {
+                holder.setItemClickListener(new ItemClickListener() {
                     @Override
                     public void onclick(View view, int position, boolean isLongClick) {
                         //Toast.makeText(Home_Page_Navigation.this, ""+categoryModel.getName(), Toast.LENGTH_SHORT).show();
@@ -120,7 +175,9 @@ public class Home_Page_Navigation extends AppCompatActivity
                 });
             }
         };
+        adapter.startListening();
         home_page_recycler_view.setAdapter(adapter);
+        swipeRefreshLayout.setRefreshing(false);
     }
 
     @Override
@@ -172,7 +229,10 @@ public class Home_Page_Navigation extends AppCompatActivity
         } else if (id == R.id.nav_orders) {
             Intent i=new Intent(Home_Page_Navigation.this,OrderStatus.class);
             startActivity(i);
-        } else if (id == R.id.nav_log_out) {
+        }else if (id == R.id.nav_change_pwd) {
+            ShowChangePasswordDialog();
+        }
+        else if (id == R.id.nav_log_out) {
             Intent i=new Intent(Home_Page_Navigation.this,LoginActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(i);
@@ -180,5 +240,71 @@ public class Home_Page_Navigation extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    private void ShowChangePasswordDialog() {
+        AlertDialog.Builder alertDialog=new AlertDialog.Builder(Home_Page_Navigation.this);
+        alertDialog.setTitle("CHANGE PASSWORD");
+        alertDialog.setMessage("Please fill all information");
+        LayoutInflater inflater=LayoutInflater.from(this);
+        View layout_pwd=inflater.inflate(R.layout.change_password_layout,null);
+        final EditText edtPassword=(EditText)layout_pwd.findViewById(R.id.edtPassword);
+        final EditText edtNewPassword=(EditText)layout_pwd.findViewById(R.id.edtNewPassword);
+        final EditText edtRepeatPassword=(EditText)layout_pwd.findViewById(R.id.edtRepeatPassword);
+        alertDialog.setView(layout_pwd);
+        alertDialog.setPositiveButton("CHANGE", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                //Change password here
+
+                final android.app.AlertDialog waitingDialog=new SpotsDialog(Home_Page_Navigation.this);
+                //check old password
+                if(edtPassword.getText().toString().equals(Common.currentuser.getPassword()))
+                {
+                    //check new password and  repeat password
+                    if(edtNewPassword.getText().toString().equals(edtRepeatPassword.getText().toString()))
+                    {
+                        Map<String,Object> passwordUpdate=new HashMap<>();
+                        passwordUpdate.put("Password",edtNewPassword.getText().toString());
+
+                        //Make update
+                        DatabaseReference user=FirebaseDatabase.getInstance().getReference("User");
+                        user.child(Common.currentuser.getPhone())
+                                .updateChildren(passwordUpdate)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                            waitingDialog.dismiss();
+                                        Toast.makeText(Home_Page_Navigation.this, "Password was Update", Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Toast.makeText(Home_Page_Navigation.this, ""+e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
+                }
+                else
+                {
+                    waitingDialog.dismiss();
+                    Toast.makeText(Home_Page_Navigation.this, "New password doesn't match", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        alertDialog.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+        alertDialog.show();
+    }
+
+    @Override
+    protected void onStop() {
+        adapter.stopListening();
+        super.onStop();
     }
 }
