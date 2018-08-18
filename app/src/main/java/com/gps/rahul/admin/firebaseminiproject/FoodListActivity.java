@@ -284,4 +284,10 @@ public class FoodListActivity extends AppCompatActivity {
         super.onStop();
         adapter.stopListening();
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadFood(CategoryId);
+    }
 }

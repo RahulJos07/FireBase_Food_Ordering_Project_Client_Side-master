@@ -304,7 +304,13 @@ public class Home_Page_Navigation extends AppCompatActivity
 
     @Override
     protected void onStop() {
-        adapter.stopListening();
         super.onStop();
+        adapter.stopListening();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadMenu();
     }
 }
