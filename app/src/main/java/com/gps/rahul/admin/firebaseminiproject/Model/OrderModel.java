@@ -6,16 +6,25 @@ public class OrderModel {
     private String Quantity;
     private String Price;
     private String Discount;
-
+    private String Image;
     public OrderModel() {
     }
 
-    public OrderModel(String productId, String productName, String quantity, String price, String discount) {
+    public OrderModel(String productId, String productName, String quantity, String price, String discount,String image) {
         ProductId = productId;
         ProductName = productName;
         Quantity = quantity;
         Price = price;
         Discount = discount;
+        Image=image;
+    }
+
+    public String getImage() {
+        return Image;
+    }
+
+    public void setImage(String image) {
+        this.Image = image;
     }
 
     public String getProductId() {

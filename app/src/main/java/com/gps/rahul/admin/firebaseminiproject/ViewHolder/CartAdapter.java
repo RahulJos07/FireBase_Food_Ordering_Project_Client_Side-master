@@ -11,10 +11,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.amulyakhare.textdrawable.TextDrawable;
+import com.cepheuen.elegantnumberbutton.view.ElegantNumberButton;
 import com.gps.rahul.admin.firebaseminiproject.Common.Common;
+import com.gps.rahul.admin.firebaseminiproject.Database.Database;
 import com.gps.rahul.admin.firebaseminiproject.Interface.ItemClickListener;
 import com.gps.rahul.admin.firebaseminiproject.Model.OrderModel;
 import com.gps.rahul.admin.firebaseminiproject.R;
+import com.squareup.picasso.Picasso;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -26,7 +29,7 @@ class CartViewHolder extends RecyclerView.ViewHolder implements View.OnClickList
     {
 
     public TextView cart_item_name,cart_item_price;
-    public ImageView cart_item_count;
+    public ImageView cart_item_count,cart_image;
 
     private ItemClickListener itemClickListener;
 
@@ -39,7 +42,7 @@ class CartViewHolder extends RecyclerView.ViewHolder implements View.OnClickList
         cart_item_name=(TextView)itemView.findViewById(R.id.cart_item_name);
         cart_item_price=(TextView)itemView.findViewById(R.id.cart_item_price);
         cart_item_count=(ImageView) itemView.findViewById(R.id.cart_item_count);
-
+        cart_image=(ImageView)itemView.findViewById(R.id.cart_image);
         itemView.setOnCreateContextMenuListener(this);
     }
 
@@ -72,7 +75,10 @@ public class CartAdapter extends RecyclerView.Adapter<CartViewHolder>{
     }
 
     @Override
-    public void onBindViewHolder(CartViewHolder holder, int position) {
+    public void onBindViewHolder(CartViewHolder holder, final int position) {
+        Picasso.with(context).load(listData.get(position).getImage()).resize(70,70)
+                .centerCrop()
+                .into(holder.cart_image);
         TextDrawable drawable=TextDrawable.builder().buildRound(""+listData.get(position).getQuantity(), Color.RED);
         holder.cart_item_count.setImageDrawable(drawable);
         Locale locale=new Locale("en","US");
